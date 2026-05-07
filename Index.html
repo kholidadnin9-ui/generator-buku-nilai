@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Cetak Buku Nilai - V11 (Revisi Anecdotal)</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --bg-app: #f3f4f6;
+            --bg-panel: #ffffff;
+            --border: #e5e7eb;
+            --text: #1f2937;
+            --a4-width: 210mm;
+            --a4-height: 297mm;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body { 
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+            background-color: var(--bg-app); 
+            color: var(--text); 
+            display: flex; 
+            height: 100vh; 
+            overflow: hidden; 
+        }
+
+        /* --- SIDEBAR --- */
+        aside { 
+            width: 320px; 
+            background: var(--bg-panel); 
+            border-right: 1px solid var(--border); 
+            display: flex; 
+            flex-direction: column; 
+            height: 100%; 
+            z-index: 10; 
+            box-shadow: 2px 0 5px rgba(0,0,0,0.05); 
+            flex-shrink: 0; 
+        }
+        
+        .sidebar-header { 
+            padding: 15px; 
+            background: var(--primary); 
+            color: white; 
+        }
+        .sidebar-header h2 { font-size: 1.1rem; font-weight: 600; }
+        
+        .sidebar-content { flex: 1; padding: 15px; overflow-y: auto; }
+        
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.85rem; color: #374151; }
+        .form-control { 
+            width: 100%; 
+            padding: 8px 10px; 
+            border: 1px solid #d1d5db; 
+            border-radius: 6px; 
+            font-size: 0.9rem; 
+        }
+        
+        textarea.form-control { 
+            resize: vertical; 
+            min-height: 100px; 
+            font-family: monospace; 
+            line-height: 1.4; 
+        }
+        
+        .help-text { font-size: 0.75rem; color: #6b7280; margin-top: 4px; display: block; }
+        
+        .sidebar-footer { 
+            padding: 15px; 
+            border-top: 1px solid var(--border); 
+            background: var(--bg-panel); 
+        }
+        
+        .btn { 
+            display: block; 
+            width: 100%; 
+            padding: 10px; 
+            border: none; 
+            border-radius: 6px; 
+            font-weight: 600; 
+            cursor: pointer; 
+            text-align: center; 
+            margin-bottom: 8px; 
+            font-size: 0.9rem;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-secondary { background: white; border: 1px solid var(--border); color: var(--text); }
+        .btn-secondary:hover { background: #f9fafb; }
+
+        /* --- PREVIEW AREA --- */
+        main { 
+            flex: 1; 
+            overflow-y: auto; 
+            padding: 40px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            gap: 30px; 
+            background: #525659; 
+        }
+
+        /* --- PAPER STYLING (COMPACT MODE) --- */
+        .page { 
+            width: var(--a4-width); 
+            height: var(--a4-height); 
+            background: white; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3); 
+            padding: 10mm 20mm; 
+            position: relative; 
+            display: flex; 
+            flex-direction: column; 
+        }
+
+        /* Typography */
+        .paper-header { 
+            text-align: center; 
+            margin-bottom: 10px; 
+            border-bottom: 3px double #000; 
+            padding-bottom: 5px; 
+            flex-shrink: 0; 
+        }
+        .school-name { font-size: 12pt; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; }
+        .school-address { font-size: 9pt; font-style: italic; }
+        .doc-title { font-size: 11pt; font-weight: bold; margin-top: 5px; text-decoration: underline; }
+
+        /* Tables (COMPACT) */
+        table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 10pt; }
+        th, td { 
+            border: 1px solid #000; 
+            padding: 2px 5px; 
+            vertical-align: middle; 
+            line-height: 1.2; 
+        }
+        th { background-color: #f3f4f6; text-align: center; font-weight: bold; font-size: 9pt; padding: 4px 5px;}
+        
+        /* Table Columns */
+        .col-narrow { width: 25px; text-align: center; }
+        .col-wide { width: auto; }
+        .col-score { width: 35px; text-align: center; }
+        .col-score-wide { width: 45px; text-align: center; }
+        
+        /* Info Grid */
+        .info-grid { 
+            display: grid; 
+            grid-template-columns: auto 1fr; 
+            gap: 2px 10px; 
+            margin-bottom: 8px; 
+            font-size: 10pt; 
+        }
+        .info-label { font-weight: bold; }
+        
+        /* Cover Styling */
+        .cover-info { 
+            margin-top: auto; 
+            margin-bottom: auto; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            text-align: center; 
+            line-height: 1.8; 
+        }
+        .cover-logo { max-width: 120px; height: auto; margin-bottom: 15px; display: block; }
+        .cover-info div { font-size: 11pt; }
+        .cover-title { font-size: 14pt; font-weight: bold; margin: 15px 0; text-decoration: underline; text-transform: uppercase; }
+
+        /* Signature Blocks */
+        .signature-section { 
+            margin-top: auto; 
+            display: flex; 
+            justify-content: center; 
+            align-items: flex-end; /* Agar bawah sejajar */
+            gap: 60px; 
+            padding-top: 10px; 
+        }
+        .sig-block { 
+            text-align: center; 
+            width: 180px; 
+            display: flex;
+            flex-direction: column;
+        }
+        .sig-space { height: 50px; }
+
+        /* --- ANECDOTAL PAGE --- */
+        .anec-header-grid { display: grid; grid-template-columns: auto 1fr; gap: 2px 15px; margin-bottom: 5px; font-size: 9.5pt; }
+        .anec-container { display: flex; flex-direction: column; gap: 10px; flex: 1; } 
+        
+        .anec-box {
+            border: 1px solid #000;
+            flex: 1; 
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .anec-box-title { font-size: 9pt; font-weight: bold; background: #f9fafb; padding: 2px; text-align: center; border-bottom: 1px solid #000; }
+
+        .table-anec { flex: 1; width: 100%; border: none; margin: 0; }
+        .table-anec th, .table-anec td { padding: 3px; text-align: left; border: 1px solid #000; height: 100%; }
+        .table-anec th:first-child, .table-anec td:first-child { width: 5%; text-align: center; }
+        .anec-cell-large { font-size: 9pt; vertical-align: top; }
+
+        /* --- PRINT MEDIA QUERY --- */
+        @media print {
+            @page { size: A4; margin: 0; }
+            body { background: white; display: block; height: auto; overflow: visible; }
+            aside { display: none !important; }
+            main { padding: 0; background: white; display: block; overflow: visible; }
+            .page { 
+                box-shadow: none; 
+                margin: 0; 
+                width: 100%; 
+                height: 297mm; 
+                page-break-after: always; 
+                border: none; 
+                padding: 10mm 20mm !important; 
+            }
+            .page:last-child { page-break-after: auto; }
+            th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR: INPUT KONFIGURASI -->
+    <aside>
+        <div class="sidebar-header">
+            <h2>Admin Buku Nilai</h2>
+        </div>
+
+        <div class="sidebar-content">
+            <!-- Identitas Sekolah & Logo -->
+            <div class="form-group">
+                <label>Logo Sekolah</label>
+                <input type="file" id="logoInput" accept="image/*" class="form-control">
+                <p class="help-text">Upload logo (PNG/JPG).</p>
+            </div>
+            <div class="form-group">
+                <label>Identitas Sekolah</label>
+                <input type="text" id="schoolName" class="form-control" value="SMA NEGERI 1 CONTOH">
+                <input type="text" id="schoolAddr" class="form-control" style="margin-top:5px;" value="Jl. Pendidikan No. 1, Kota Pelajar">
+            </div>
+
+            <!-- Info Kelas -->
+            <div class="form-group">
+                <label>Info Kelas & Guru</label>
+                <select id="semester" class="form-control" style="margin-bottom: 4px;">
+                    <option value="Ganjil">Semester Ganjil</option>
+                    <option value="Genap">Semester Genap</option>
+                </select>
+                <input type="text" id="academicYear" class="form-control" placeholder="Tahun Pelajaran" value="2023/2024">
+                <input type="text" id="className" class="form-control" placeholder="Kelas" value="X IPA 1" style="margin-top:4px;">
+                <input type="text" id="teacherName" class="form-control" placeholder="Nama Guru" value="Widodo, S.Pd.I., S.Pd., Gr." style="margin-top:4px;">
+            </div>
+
+            <!-- Input Siswa -->
+            <div class="form-group">
+                <label>Daftar Nama Siswa (Max 35)</label>
+                <textarea id="studentList" class="form-control" placeholder="Satu nama per baris.">Ahmad Santoso
+Budi Pratama
+Citra Dewi
+Dian Permata
+Eko Prasetyo
+Fani Rahmawati
+Gilang Ramadhan
+Hani Indah
+Indra Wijaya
+Joko Susilo
+Kartika Sari
+Lina Marlina
+Muhammad Rizki
+Nurul Hidayah
+Oscar Wijaya
+Putri Ayu
+Qori Riski
+Rina Wati
+Siti Aminah
+Toni Kurniawan
+Umar Bakri
+Vera Susanti
+Wahyu Hidayat
+Xena Putri
+Yudi Pratama
+Zainal Abidin
+Andi Saputra
+Bunga Citra
+Cakra Khan
+Dedi Corbuzier
+Eko Patrio
+Feri Irawan</textarea>
+                <p class="help-text">Mode Compact: Sampai 35 siswa muat di 1 halaman.</p>
+            </div>
+
+            <!-- Input Mapel -->
+            <div class="form-group">
+                <label>Daftar Mata Pelajaran</label>
+                <textarea id="subjectList" class="form-control" placeholder="Nama Mapel per baris...">Matematika Wajib
+Bahasa Indonesia
+Fisika</textarea>
+            </div>
+
+            <!-- Opsi Cetak TP -->
+            <div class="form-group">
+                <label>Jumlah Halaman TP (Formasi A)</label>
+                <input type="number" id="tpCount" class="form-control" value="1" min="1" max="5">
+            </div>
+
+            <!-- Opsi Cetak Anecdotal -->
+            <div class="form-group">
+                <label>Jumlah Halaman Anecdotal</label>
+                <input type="number" id="anecCount" class="form-control" value="1" min="1" max="10">
+            </div>
+        </div>
+
+        <div class="sidebar-footer">
+            <button class="btn btn-primary" onclick="updatePreview()">Update Pratinjau</button>
+            <button class="btn btn-secondary" onclick="printDocument()">Cetak / Simpan PDF</button>
+        </div>
+    </aside>
+
+    <!-- MAIN: PREVIEW AREA -->
+    <main id="previewContainer">
+        <!-- Halaman digenerate di sini -->
+    </main>
+
+    <script>
+        // --- GLOBAL VAR FOR LOGO ---
+        let logoDataUrl = "https://picsum.photos/seed/schoollogo/150/150"; 
+
+        // --- UTILS ---
+        document.getElementById('logoInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    logoDataUrl = event.target.result;
+                    updatePreview();
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function getStudentList() {
+            const raw = document.getElementById('studentList').value;
+            return raw.split('\n').map(s => s.trim()).filter(s => s !== "");
+        }
+
+        function getSubjectList() {
+            const raw = document.getElementById('subjectList').value;
+            return raw.split('\n').map(s => s.trim()).filter(s => s !== "");
+        }
+
+        // --- GENERATORS ---
+
+        // 1. Cover
+        function generateCover() {
+            const school = document.getElementById('schoolName').value;
+            const addr = document.getElementById('schoolAddr').value;
+            const year = document.getElementById('academicYear').value;
+            const sem = document.getElementById('semester').value;
+            const cls = document.getElementById('className').value;
+            const teacher = document.getElementById('teacherName').value;
+
+            return `
+            <div class="page">
+                <div class="paper-header">
+                    <div class="school-name">${school}</div>
+                    <div class="school-address">${addr}</div>
+                </div>
+                
+                <div class="cover-info">
+                    <img src="${logoDataUrl}" alt="Logo Sekolah" class="cover-logo">
+                    <div class="cover-title">Buku Nilai & Anecdotal Record</div>
+                    <br>
+                    <div>Tahun Pelajaran : ${year}</div>
+                    <div>Semester       : ${sem}</div>
+                    <div>Kelas          : ${cls}</div>
+                    <div>Nama Guru      : ${teacher}</div>
+                </div>
+            </div>
+            `;
+        }
+
+        // 2. Halaman Format A (TP)
+        function generatePageFormatA(subjectName, students, pageSeq) {
+            let tableRows = students.map((s, i) => `
+                <tr>
+                    <td class="col-narrow">${i + 1}</td>
+                    <td>${s}</td>
+                    <td class="col-score"></td>
+                    <td class="col-score"></td>
+                    <td class="col-score"></td>
+                    <td class="col-score"></td>
+                    <td class="col-score"></td>
+                </tr>
+            `).join('');
+            
+            const seqTitle = pageSeq > 1 ? ` (Hal. ${pageSeq})` : '';
+
+            return `
+            <div class="page">
+                <div class="paper-header" style="border-bottom: 2px solid #000;">
+                    <div class="doc-title" style="margin-top:0; text-decoration:none; font-size:10pt;">LEMBAR KERJA SISWA (TP)${seqTitle}</div>
+                </div>
+
+                <div class="info-grid" style="font-size: 9.5pt;">
+                    <div class="info-label">Mata Pelajaran</div>
+                    <div>: ${subjectName}</div>
+                    <div class="info-label">Kelas</div>
+                    <div>: ${document.getElementById('className').value}</div>
+                    <div class="info-label">Materi / Bab</div>
+                    <div>: .........................................................................................................................</div>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="col-narrow">No</th>
+                            <th>Nama Siswa</th>
+                            <th class="col-score">TP 1</th>
+                            <th class="col-score">TP 2</th>
+                            <th class="col-score">TP 3</th>
+                            <th class="col-score">TP 4</th>
+                            <th class="col-score">TP 5</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tableRows}
+                    </tbody>
+                </table>
+            </div>
+            `;
+        }
+
+        // 3. Halaman Format B (Rekap Sumatif)
+        function generatePageFormatB(subjectName, students) {
+            let tableRows = students.map((s, i) => `
+                <tr>
+                    <td class="col-narrow">${i + 1}</td>
+                    <td>${s}</td>
+                    <td class="col-score"></td>
+                    <td class="col-score"></td>
+                    <td class="col-score"></td>
+                    <td class="col-score"></td>
+                    <td class="col-score"></td>
+                    <td class="col-score-wide" style="background-color: #fffbe6; font-weight:bold;">&nbsp;</td>
+                </tr>
+            `).join('');
+
+            const teacher = document.getElementById('teacherName').value;
+
+            return `
+            <div class="page">
+                <div class="paper-header" style="border-bottom: 2px solid #000;">
+                    <div class="doc-title" style="margin-top:0; text-decoration:none; font-size:10pt;">REKAPITULASI NILAI SUMATIF</div>
+                </div>
+
+                <div class="info-grid" style="font-size: 9.5pt;">
+                    <div class="info-label">Nama Mapel</div>
+                    <div>: ${subjectName}</div>
+                    <div class="info-label">Semester</div>
+                    <div>: ${document.getElementById('semester').value}</div>
+                    <div class="info-label">Kelas</div>
+                    <div>: ${document.getElementById('className').value}</div>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="col-narrow">No</th>
+                            <th>Nama Siswa</th>
+                            <th class="col-score">LM 1</th>
+                            <th class="col-score">LM 2</th>
+                            <th class="col-score">LM 3</th>
+                            <th class="col-score">LM 4</th>
+                            <th class="col-score">LM 5</th>
+                            <th class="col-score-wide">Nilai Akhir</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tableRows}
+                    </tbody>
+                </table>
+
+                <div class="signature-section">
+                    <div class="sig-block">
+                        Mengetahui,<br>Kepala Sekolah
+                        <div class="sig-space"></div>
+                        <div>( ............................................ )</div>
+                    </div>
+                    <div class="sig-block">
+                        Guru Mapel,
+                        <div style="height: 70px;"></div> 
+                        <b>(${teacher})</b>
+                    </div>
+                </div>
+            </div>
+            `;
+        }
+
+        // 4. Halaman Anecdotal (UPDATED TEXT)
+        function generateAnecdotalPage() {
+            const cls = document.getElementById('className').value;
+            const sem = document.getElementById('semester').value;
+            const teacher = document.getElementById('teacherName').value;
+
+            const createStudentEntry = (label) => `
+                <div class="anec-box">
+                    <div class="anec-box-title">${label}</div>
+                    <table class="table-anec">
+                        <thead>
+                            <tr>
+                                <th>No</th>
+                                <th style="width: 25%">Nama Siswa</th>
+                                <th style="width: 30%">Kejadian / Perilaku</th>
+                                <th style="width: 20%">Penanganan</th>
+                                <th style="width: 20%">Hasil</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="vertical-align:top; text-align:center;">1.</td>
+                                <td class="anec-cell-large"></td>
+                                <td class="anec-cell-large"></td>
+                                <td class="anec-cell-large"></td>
+                                <td class="anec-cell-large"></td>
+                            </tr>
+                            <tr>
+                                <td style="vertical-align:top; text-align:center;">2.</td>
+                                <td class="anec-cell-large"></td>
+                                <td class="anec-cell-large"></td>
+                                <td class="anec-cell-large"></td>
+                                <td class="anec-cell-large"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            return `
+            <div class="page">
+                <div class="paper-header" style="border-bottom: 2px solid #000;">
+                    <!-- Perubahan 1: Judul disesuaikan -->
+                    <div class="doc-title" style="margin-top:0; text-decoration:none; font-size:10pt;">Anecdotal Record</div>
+                </div>
+
+                <div class="anec-header-grid">
+                    <div class="info-label">Hari/Tanggal</div>
+                    <div>: ..................................................</div>
+                    <div class="info-label">Kelas</div>
+                    <div>: ${cls}</div>
+                    <div class="info-label">Semester</div>
+                    <div>: ${sem}</div>
+                    <div class="info-label">Guru Piket</div>
+                    <div>: ${teacher}</div>
+                </div>
+
+                <div class="anec-container">
+                    <!-- Perubahan 2: Label grup diganti menjadi Data Siswa -->
+                    ${createStudentEntry("DATA SISWA 1")}
+                    ${createStudentEntry("DATA SISWA 2")}
+                    ${createStudentEntry("DATA SISWA 3")}
+                </div>
+
+                <div class="signature-section" style="justify-content: flex-end; margin-top: auto;">
+                    <div class="sig-block">
+                        Guru Kelas / Wali,<br>
+                        <div style="height: 70px;"></div> 
+                        <b>(${teacher})</b>
+                    </div>
+                </div>
+            </div>
+            `;
+        }
+
+        // --- MAIN FUNCTIONS ---
+
+        function updatePreview() {
+            const container = document.getElementById('previewContainer');
+            const students = getStudentList();
+            const subjects = getSubjectList();
+            const tpCount = parseInt(document.getElementById('tpCount').value) || 1;
+            const anecCount = parseInt(document.getElementById('anecCount').value) || 1;
+            
+            if (students.length === 0) return;
+            if(tpCount < 1 || tpCount > 5) return;
+            if(anecCount < 1 || anecCount > 10) return;
+
+            let htmlContent = "";
+
+            // 1. Cover
+            htmlContent += generateCover();
+
+            // 2. Loop Paket (Mapel)
+            subjects.forEach(subj => {
+                for(let i = 1; i <= tpCount; i++) {
+                    htmlContent += generatePageFormatA(subj, students, i);
+                }
+                htmlContent += generatePageFormatB(subj, students);
+            });
+
+            // 3. Halaman Anecdotal
+            for(let k = 1; k <= anecCount; k++) {
+                htmlContent += generateAnecdotalPage();
+            }
+
+            container.innerHTML = htmlContent;
+        }
+
+        function printDocument() {
+            window.print();
+        }
+
+        window.addEventListener('DOMContentLoaded', updatePreview);
+    </script>
+</body>
+</html>
